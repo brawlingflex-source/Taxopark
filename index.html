@@ -284,21 +284,41 @@
             bottom: 20px;
             right: 20px;
             background-color: rgba(30, 30, 40, 0.8);
-            padding: 10px;
+            padding: 15px;
             border-radius: 10px;
             z-index: 5;
             border: 1px solid #555;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 180px;
+        }
+        
+        .sound-control-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .sound-label {
+            color: #aaa;
+            font-size: 14px;
+            margin-right: 10px;
         }
         
         .sound-button {
             background: none;
             border: none;
             color: #ffcc00;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
-            padding: 5px;
+            padding: 5px 8px;
             border-radius: 5px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
         }
         
         .sound-button:hover {
@@ -307,15 +327,23 @@
         
         .sound-button.muted {
             color: #888;
+            opacity: 0.7;
         }
         
         .sound-button:focus {
             outline: none;
         }
         
+        .sound-status {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 5px;
+            text-align: center;
+        }
+        
         .car-effects {
             position: absolute;
-            bottom: 80px;
+            bottom: 140px;
             right: 20px;
             background-color: rgba(30, 30, 40, 0.8);
             padding: 10px;
@@ -459,11 +487,34 @@
         </div>
         
         <div class="sound-controls">
-            <button id="soundToggle" class="sound-button" title="Включить/выключить звук">🔊</button>
+            <div class="sound-control-group">
+                <span class="sound-label">Двигатель:</span>
+                <button id="engineSoundToggle" class="sound-button" title="Включить/выключить звук двигателя">
+                    <span id="engineIcon">🔊</span>
+                </button>
+            </div>
+            
+            <div class="sound-control-group">
+                <span class="sound-label">Столкновения:</span>
+                <button id="crashSoundToggle" class="sound-button" title="Включить/выключить звук столкновений">
+                    <span id="crashIcon">💥</span>
+                </button>
+            </div>
+            
+            <div class="sound-control-group">
+                <span class="sound-label">Двери/завершение:</span>
+                <button id="otherSoundToggle" class="sound-button" title="Включить/выключить другие звуки">
+                    <span id="otherIcon">🎵</span>
+                </button>
+            </div>
+            
+            <div class="sound-status" id="soundStatus">
+                Все звуки включены
+            </div>
         </div>
         
         <div class="car-effects">
-            Звуки: двигатель и столкновения
+            
         </div>
     </div>
 
@@ -501,7 +552,16 @@
         const elapsedTimeElement = document.getElementById('elapsedTime');
         const remainingTimeElement = document.getElementById('remainingTime');
         const finalPrice = document.getElementById('finalPrice');
-        const soundToggle = document.getElementById('soundToggle');
+        
+        // Элементы управления звуком
+        const engineSoundToggle = document.getElementById('engineSoundToggle');
+        const crashSoundToggle = document.getElementById('crashSoundToggle');
+        const otherSoundToggle = document.getElementById('otherSoundToggle');
+        const engineIcon = document.getElementById('engineIcon');
+        const crashIcon = document.getElementById('crashIcon');
+        const otherIcon = document.getElementById('otherIcon');
+        const soundStatus = document.getElementById('soundStatus');
+        
         const carEffectsContainer = document.getElementById('carEffects');
         const cityLightsContainer = document.getElementById('cityLights');
         
@@ -528,7 +588,9 @@
         
         // Переменные для звуков
         let audioContext = null;
-        let isSoundEnabled = true;
+        let engineSoundEnabled = true;
+        let crashSoundEnabled = true;
+        let otherSoundEnabled = true;
         let engineSoundSource = null;
         let lastCrashSoundTime = 0;
         
@@ -569,19 +631,52 @@
             }
         }
         
+        // Обновление статуса звуков
+        function updateSoundStatus() {
+            const enabledSounds = [];
+            
+            if (engineSoundEnabled) enabledSounds.push("двигатель");
+            if (crashSoundEnabled) enabledSounds.push("столкновения");
+            if (otherSoundEnabled) enabledSounds.push("другие");
+            
+            if (enabledSounds.length === 0) {
+                soundStatus.textContent = "Все звуки выключены";
+            } else if (enabledSounds.length === 3) {
+                soundStatus.textContent = "Все звуки включены";
+            } else {
+                soundStatus.textContent = "Включены: " + enabledSounds.join(", ");
+            }
+            
+            // Обновляем иконки
+            engineIcon.textContent = engineSoundEnabled ? "🔊" : "🔇";
+            crashIcon.textContent = crashSoundEnabled ? "💥" : "🚫";
+            otherIcon.textContent = otherSoundEnabled ? "🎵" : "🔕";
+            
+            // Обновляем классы для визуальной индикации
+            engineSoundToggle.classList.toggle('muted', !engineSoundEnabled);
+            crashSoundToggle.classList.toggle('muted', !crashSoundEnabled);
+            otherSoundToggle.classList.toggle('muted', !otherSoundEnabled);
+        }
+        
         // Инициализация звуковой системы
         function initAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 createSounds();
                 
-                // Включаем звук по умолчанию
-                enableSound();
+                // Устанавливаем начальный статус
+                updateSoundStatus();
+                
+                // Включаем аудиоконтекст если он был приостановлен
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
             } catch (e) {
                 console.log("Web Audio API не поддерживается в этом браузере");
-                isSoundEnabled = false;
-                soundToggle.classList.add('muted');
-                soundToggle.textContent = '🔇';
+                engineSoundEnabled = false;
+                crashSoundEnabled = false;
+                otherSoundEnabled = false;
+                updateSoundStatus();
             }
         }
         
@@ -679,40 +774,40 @@
             window.completionSoundBuffer = createCompletionSound();
         }
         
-        // Включение/выключение звука
-        function toggleSound() {
+        // Включение/выключение звука двигателя
+        function toggleEngineSound() {
             if (!audioContext) return;
             
-            if (isSoundEnabled) {
-                disableSound();
+            engineSoundEnabled = !engineSoundEnabled;
+            
+            if (engineSoundEnabled) {
+                // Если такси движется, включаем звук двигателя
+                if (isTaxiMoving) {
+                    playEngineSound(taxiSpeed);
+                }
             } else {
-                enableSound();
+                // Останавливаем звук двигателя
+                stopEngineSound();
             }
+            
+            updateSoundStatus();
         }
         
-        function enableSound() {
-            isSoundEnabled = true;
-            soundToggle.classList.remove('muted');
-            soundToggle.textContent = '🔊';
-            
-            // Возобновляем аудиоконтекст если он был приостановлен
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
+        // Включение/выключение звука столкновений
+        function toggleCrashSound() {
+            crashSoundEnabled = !crashSoundEnabled;
+            updateSoundStatus();
         }
         
-        function disableSound() {
-            isSoundEnabled = false;
-            soundToggle.classList.add('muted');
-            soundToggle.textContent = '🔇';
-            
-            // Останавливаем все звуки
-            stopEngineSound();
+        // Включение/выключение других звуков
+        function toggleOtherSound() {
+            otherSoundEnabled = !otherSoundEnabled;
+            updateSoundStatus();
         }
         
         // Воспроизведение звука двигателя
         function playEngineSound(speed) {
-            if (!audioContext || !isSoundEnabled || !window.engineSoundBuffer) return;
+            if (!audioContext || !engineSoundEnabled || !window.engineSoundBuffer) return;
             
             stopEngineSound();
             
@@ -746,7 +841,7 @@
         
         // Воспроизведение звука столкновения
         function playCrashSound() {
-            if (!audioContext || !isSoundEnabled || !window.crashSoundBuffer) return;
+            if (!audioContext || !crashSoundEnabled || !window.crashSoundBuffer) return;
             
             const now = Date.now();
             if (now - lastCrashSoundTime < 500) return; // Ограничение частоты звуков столкновения
@@ -767,7 +862,7 @@
         
         // Воспроизведение звука закрытия двери
         function playDoorSound() {
-            if (!audioContext || !isSoundEnabled || !window.doorSoundBuffer) return;
+            if (!audioContext || !otherSoundEnabled || !window.doorSoundBuffer) return;
             
             const source = audioContext.createBufferSource();
             source.buffer = window.doorSoundBuffer;
@@ -783,7 +878,7 @@
         
         // Воспроизведение звука завершения поездки
         function playCompletionSound() {
-            if (!audioContext || !isSoundEnabled || !window.completionSoundBuffer) return;
+            if (!audioContext || !otherSoundEnabled || !window.completionSoundBuffer) return;
             
             const source = audioContext.createBufferSource();
             source.buffer = window.completionSoundBuffer;
@@ -879,8 +974,10 @@
             resetGame();
         });
         
-        // Кнопка управления звуком
-        soundToggle.addEventListener('click', toggleSound);
+        // Кнопки управления звуком
+        engineSoundToggle.addEventListener('click', toggleEngineSound);
+        crashSoundToggle.addEventListener('click', toggleCrashSound);
+        otherSoundToggle.addEventListener('click', toggleOtherSound);
         
         // Функция форматирования времени в MM:SS
         function formatTime(minutes, seconds) {
@@ -951,8 +1048,10 @@
             }
             timeUpdateInterval = setInterval(updateTimers, 100);
             
-            // Запускаем звук двигателя
-            playEngineSound(taxiSpeed);
+            // Запускаем звук двигателя, если он включен
+            if (engineSoundEnabled) {
+                playEngineSound(taxiSpeed);
+            }
             
             // Запускаем анимацию
             if (animationId) {
