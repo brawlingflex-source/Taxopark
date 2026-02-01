@@ -189,6 +189,7 @@
             margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
         
         .info-label {
@@ -198,6 +199,33 @@
         .info-value {
             color: #fff;
             font-weight: bold;
+        }
+        
+        .price-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .price-button {
+            background-color: rgba(255, 204, 0, 0.2);
+            color: #ffcc00;
+            border: 1px solid #ffcc00;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .price-button:hover {
+            background-color: rgba(255, 204, 0, 0.3);
+        }
+        
+        .hidden-price {
+            color: #666 !important;
+            font-style: italic;
         }
         
         #taxiCountdown {
@@ -461,8 +489,13 @@
                 <span class="info-value" id="currentAddress">-</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Стоимость:</span>
-                <span class="info-value" id="currentPrice">- руб</span>
+                <div class="info-label">Стоимость:</div>
+                <div class="info-value-container">
+                    <span class="info-value" id="currentPrice">- руб</span>
+                    <div class="price-control">
+                        <button id="togglePriceBtn" class="price-button">Скрыть стоимость</button>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -514,7 +547,7 @@
         </div>
         
         <div class="car-effects">
-            
+            Управление звуками отдельно
         </div>
     </div>
 
@@ -547,6 +580,7 @@
         const tripInfo = document.getElementById('tripInfo');
         const currentAddress = document.getElementById('currentAddress');
         const currentPrice = document.getElementById('currentPrice');
+        const togglePriceBtn = document.getElementById('togglePriceBtn');
         const timePanel = document.getElementById('timePanel');
         const totalTimeElement = document.getElementById('totalTime');
         const elapsedTimeElement = document.getElementById('elapsedTime');
@@ -593,6 +627,9 @@
         let otherSoundEnabled = true;
         let engineSoundSource = null;
         let lastCrashSoundTime = 0;
+        
+        // Переменная для состояния отображения стоимости
+        let isPriceVisible = true;
         
         // Начальная позиция такси
         taxiElement.style.left = `${taxiX - 40}px`;
@@ -656,6 +693,23 @@
             engineSoundToggle.classList.toggle('muted', !engineSoundEnabled);
             crashSoundToggle.classList.toggle('muted', !crashSoundEnabled);
             otherSoundToggle.classList.toggle('muted', !otherSoundEnabled);
+        }
+        
+        // Функция переключения видимости стоимости
+        function togglePriceVisibility() {
+            isPriceVisible = !isPriceVisible;
+            
+            if (isPriceVisible) {
+                // Показать стоимость
+                currentPrice.textContent = `${tripPrice} руб`;
+                currentPrice.classList.remove('hidden-price');
+                togglePriceBtn.textContent = 'Скрыть стоимость';
+            } else {
+                // Скрыть стоимость
+                currentPrice.textContent = '*** руб';
+                currentPrice.classList.add('hidden-price');
+                togglePriceBtn.textContent = 'Показать стоимость';
+            }
         }
         
         // Инициализация звуковой системы
@@ -979,6 +1033,9 @@
         crashSoundToggle.addEventListener('click', toggleCrashSound);
         otherSoundToggle.addEventListener('click', toggleOtherSound);
         
+        // Кнопка переключения видимости стоимости
+        togglePriceBtn.addEventListener('click', togglePriceVisibility);
+        
         // Функция форматирования времени в MM:SS
         function formatTime(minutes, seconds) {
             const mins = Math.floor(minutes);
@@ -1032,6 +1089,13 @@
             
             // Обновляем панель информации
             currentAddress.textContent = tripAddress.length > 15 ? tripAddress.substring(0, 15) + '...' : tripAddress;
+            
+            // Сбрасываем состояние видимости стоимости
+            isPriceVisible = true;
+            currentPrice.textContent = `${tripPrice} руб`;
+            currentPrice.classList.remove('hidden-price');
+            togglePriceBtn.textContent = 'Скрыть стоимость';
+            
             currentPrice.textContent = `${tripPrice} руб`;
             totalTimeElement.textContent = `${tripTimeMinutes} мин`;
             
@@ -1227,8 +1291,10 @@
             // Воспроизводим звук завершения
             playCompletionSound();
             
-            // Отображаем сообщение о завершении
+            // Обновляем финальную цену (всегда показываем в окне завершения)
             finalPrice.textContent = `${tripPrice} руб`;
+            
+            // Отображаем сообщение о завершении
             completionMessage.classList.add('active');
         }
         
@@ -1240,6 +1306,12 @@
             taxiAngle = 0;
             taxiSpeed = 0;
             taxiPath = [];
+            
+            // Сбрасываем состояние видимости стоимости
+            isPriceVisible = true;
+            currentPrice.textContent = `${tripPrice} руб`;
+            currentPrice.classList.remove('hidden-price');
+            togglePriceBtn.textContent = 'Скрыть стоимость';
             
             // Сбрасываем позицию такси
             taxiElement.style.left = `${taxiX - 40}px`;
